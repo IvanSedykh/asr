@@ -4,6 +4,7 @@ import warnings
 
 import numpy as np
 import torch
+from dotenv import load_dotenv
 
 import hw_asr.loss as module_loss
 import hw_asr.metric as module_metric
@@ -22,6 +23,7 @@ torch.backends.cudnn.deterministic = True
 torch.backends.cudnn.benchmark = False
 np.random.seed(SEED)
 
+load_dotenv()
 
 def main(config):
     logger = config.get_logger("train")
