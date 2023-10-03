@@ -1,3 +1,4 @@
+import sys
 from torch import nn
 from torch.nn import Sequential
 
@@ -17,7 +18,11 @@ class BaselineModel(BaseModel):
         )
 
     def forward(self, spectrogram, **batch):
-        return {"logits": self.net(spectrogram.transpose(1, 2))}
+        # print(f"{spectrogram.shape=}")
+        output = {"logits": self.net(spectrogram.transpose(1, 2))}
+        # print(f"{output['logits'].shape=}")
+        # sys.exit(0)
+        return output
 
     def transform_input_lengths(self, input_lengths):
         return input_lengths  # we don't reduce time dimension here

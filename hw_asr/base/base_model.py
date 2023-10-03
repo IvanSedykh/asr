@@ -20,7 +20,9 @@ class BaseModel(nn.Module):
         Forward pass logic.
         Can return a torch.Tensor (it will be interpreted as logits) or a dict.
 
-        :return: Model output
+        spec shape [bs, n_feats, seq_len]
+
+        :return: Model output. logits shape [bs, seq_len, n_class]
         """
         raise NotImplementedError()
 
