@@ -150,11 +150,12 @@ class ConvSubsampling(nn.Module):
         self.convblock = nn.Sequential(
             nn.Conv2d(1, dim, kernel_size=3, stride=2),
             Swish(),
-            nn.Conv2d(dim, dim, kernel_size=3, stride=2),
-            Swish(),
+            # nn.Conv2d(dim, dim, kernel_size=3, stride=2),
+            # Swish(),
         )
 
-        self.proj = nn.Linear(dim * (((n_feats_in - 1) // 2 - 1) // 2), dim)
+        # self.proj = nn.Linear(dim * (((n_feats_in - 1) // 2 - 1) // 2), dim)
+        self.proj = nn.Linear(dim * (((n_feats_in - 1) // 2)), dim)
 
     def forward(self, x):
         x = torch.unsqueeze(x, dim=1)  # add channel dim
@@ -169,6 +170,16 @@ class ConvSubsampling(nn.Module):
         out = self.proj(x)
         # [bs, new_seq_len, dim]
         return out
+
+    def transform_input_lengths(self, input_lengths):
+        def one_conv(input, kernel=3, stride=2, padding=0):
+            return (input - kernel + 2 * padding) // stride + 1
+
+        # for two conv layers
+        # return one_conv(one_conv(input_lengths))
+
+        # for one conv layer
+        return one_conv(input_lengths)
 
 
 class Conformer(BaseModel):
@@ -220,10 +231,7 @@ class Conformer(BaseModel):
         return output
 
     def transform_input_lengths(self, input_lengths):
-        def one_conv(input, kernel=3, stride=2, padding=0):
-            return (input - kernel + 2 * padding) // stride + 1
-
         if self.do_conv_subsampling:
-            return one_conv(one_conv(input_lengths))
+            return self.conv_subsampling.transform_input_lengths(input_lengths)
         else:
             return input_lengths

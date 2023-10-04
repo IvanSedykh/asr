@@ -2,11 +2,18 @@
 
 ## Installation guide
 
-< Write your installation guide here >
+1. install conda, create new env
+2. install torch
+   ``` shell
+   conda install pytorch torchvision torchaudio pytorch-cuda=11.8 -c pytorch -c nvidia
+   conda install pytorch==1.11.0 torchvision==0.12.0 torchaudio==0.11.0 cudatoolkit=11.3 -c pytorch
+   ```
+3. install other stuff
 
-```shell
-pip install -r ./requirements.txt
-```
+   ```shell
+   pip install -r ./requirements.txt
+   ```
+4. pray and hope
 
 ## Recommended implementation order
 
