@@ -137,7 +137,38 @@ class ConformerBlock(nn.Module):
         return self.block(x)
 
 
-# todo: conv subsampling
+class ConvSubsampling(nn.Module):
+    # inspired by some github code
+    def __init__(self, n_feats_in: int, dim: int) -> None:
+        """
+        assuming it will decrease seq_len by 4 times
+
+        - input of shape [bs, seq_len, n_feats]
+        - output of shape [bs, new_seq_len, dim]
+        """
+        super().__init__()
+        self.convblock = nn.Sequential(
+            nn.Conv2d(1, dim, kernel_size=3, stride=2),
+            Swish(),
+            nn.Conv2d(dim, dim, kernel_size=3, stride=2),
+            Swish(),
+        )
+
+        self.proj = nn.Linear(dim * (((n_feats_in - 1) // 2 - 1) // 2), dim)
+
+    def forward(self, x):
+        x = torch.unsqueeze(x, dim=1)  # add channel dim
+        # [bs, 1, seq_len, n_feats]
+        x = self.convblock(x)
+        # [bs, dim, new_seq_len, new_dim]
+        x = x.permute(0, 2, 1, 3)
+        # [bs, new_seq_len, dim, new_dim]
+        bs, new_seq_len, dim, new_dim = x.shape
+        x = x.reshape(bs, new_seq_len, dim * new_dim)
+        # [bs, new_seq_len, new_dim]
+        out = self.proj(x)
+        # [bs, new_seq_len, dim]
+        return out
 
 
 class Conformer(BaseModel):
@@ -151,12 +182,17 @@ class Conformer(BaseModel):
         num_heads=4,
         kernel_size=31,
         num_blocks=8,
+        conv_subsampling=False,
         **batch
     ):
         super().__init__(n_feats, n_class, **batch)
 
-        self.proj = nn.Linear(n_feats, dim)
-        # todo: add conv subsampling
+        self.conv_subsampling = conv_subsampling
+        if conv_subsampling:
+            self.conv_subsampling = ConvSubsampling(n_feats_in=n_feats, dim=dim)
+        else:
+            self.conv_subsampling = nn.Linear(n_feats, dim)
+
         self.blocks = nn.Sequential(
             *[
                 ConformerBlock(
@@ -175,8 +211,7 @@ class Conformer(BaseModel):
         # [bs, n_feats, seq_len] -> [bs, seq_len, n_feats]
         spectrogram = torch.transpose(spectrogram, 1, 2)
 
-        # todo: conv subsampling
-        x = self.proj(spectrogram)
+        x = self.conv_subsampling(spectrogram)
 
         x = self.blocks(x)
         logits = self.clf(x)
@@ -185,4 +220,10 @@ class Conformer(BaseModel):
         return output
 
     def transform_input_lengths(self, input_lengths):
-        return input_lengths  # we don't reduce time dimension here
+        def one_conv(input, kernel=3, stride=2, padding=0):
+            return (input - kernel + 2 * padding) // stride + 1
+
+        if self.conv_subsampling:
+            return one_conv(one_conv(input_lengths))
+        else:
+            return input_lengths
