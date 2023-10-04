@@ -182,13 +182,13 @@ class Conformer(BaseModel):
         num_heads=4,
         kernel_size=31,
         num_blocks=8,
-        conv_subsampling=False,
+        do_conv_subsampling=False,
         **batch
     ):
         super().__init__(n_feats, n_class, **batch)
 
-        self.conv_subsampling = conv_subsampling
-        if conv_subsampling:
+        self.do_conv_subsampling = do_conv_subsampling
+        if do_conv_subsampling:
             self.conv_subsampling = ConvSubsampling(n_feats_in=n_feats, dim=dim)
         else:
             self.conv_subsampling = nn.Linear(n_feats, dim)
@@ -223,7 +223,7 @@ class Conformer(BaseModel):
         def one_conv(input, kernel=3, stride=2, padding=0):
             return (input - kernel + 2 * padding) // stride + 1
 
-        if self.conv_subsampling:
+        if self.do_conv_subsampling:
             return one_conv(one_conv(input_lengths))
         else:
             return input_lengths
