@@ -1,5 +1,5 @@
 {
-  "name": "one_batch_test",
+  "name": "conformer_v5",
   "n_gpu": 1,
   "preprocessing": {
     "sr": 16000,
@@ -19,36 +19,68 @@
     "args": {
       "n_feats": 128,
       "dim" : 64,
-      "num_blocks": 6
+      "dropout_p": 0.2,
+      "num_blocks": 6,
+      "do_conv_subsampling": true
     }
   },
   "data": {
     "train": {
-      "batch_size": 10,
-      "num_workers": 0,
+      "batch_size": 64,
+      "num_workers": 8,
       "datasets": [
         {
           "type": "LibrispeechDataset",
           "args": {
-            "part": "dev-clean",
+            "part": "train-clean-100",
             "max_audio_length": 20.0,
-            "max_text_length": 200,
-            "limit": 10
+            "max_text_length": 200
+          }
+        },
+        {
+          "type": "LibrispeechDataset",
+          "args": {
+            "part": "train-clean-360",
+            "max_audio_length": 20.0,
+            "max_text_length": 200
           }
         }
       ]
     },
     "val": {
-      "batch_size": 10,
-      "num_workers": 0,
+      "batch_size": 64,
+      "num_workers": 8,
       "datasets": [
         {
           "type": "LibrispeechDataset",
           "args": {
             "part": "dev-clean",
             "max_audio_length": 20.0,
-            "max_text_length": 200,
-            "limit": 10
+            "max_text_length": 200
+          }
+        }
+      ]
+    },
+    "test-other": {
+      "batch_size": 30,
+      "num_workers": 5,
+      "datasets": [
+        {
+          "type": "LibrispeechDataset",
+          "args": {
+            "part": "test-other"
+          }
+        }
+      ]
+    },
+    "test-clean": {
+      "batch_size": 30,
+      "num_workers": 5,
+      "datasets": [
+        {
+          "type": "LibrispeechDataset",
+          "args": {
+            "part": "test-clean"
           }
         }
       ]
@@ -82,8 +114,7 @@
   "lr_scheduler": {
     "type": "OneCycleLR",
     "args": {
-      "steps_per_epoch": 100,
-      "epochs": 50,
+      "epochs": 51,
       "anneal_strategy": "cos",
       "max_lr": 1e-2,
       "pct_start": 0.2
@@ -98,7 +129,6 @@
     "early_stop": 100,
     "visualize": "wandb",
     "wandb_project": "asr_project",
-    "len_epoch": 100,
     "grad_norm_clip": 5
   }
 }

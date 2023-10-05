@@ -25,6 +25,7 @@ np.random.seed(SEED)
 
 load_dotenv()
 
+
 def main(config):
     logger = config.get_logger("train")
 
@@ -55,7 +56,21 @@ def main(config):
     # disabling scheduler
     trainable_params = filter(lambda p: p.requires_grad, model.parameters())
     optimizer = config.init_obj(config["optimizer"], torch.optim, trainable_params)
-    lr_scheduler = config.init_obj(config["lr_scheduler"], torch.optim.lr_scheduler, optimizer)
+
+    # todo: clean up
+    # make func get_lr_scheduler()
+    if not "steps_per_epoch" in config["lr_scheduler"]["args"]:
+        if "len_epoch" in config["trainer"]:
+            config["lr_scheduler"]["args"]["steps_per_epoch"] = config["trainer"][
+                "len_epoch"
+            ]
+        else:
+            config["lr_scheduler"]["args"]["steps_per_epoch"] = len(
+                dataloaders["train"]
+            )
+    lr_scheduler = config.init_obj(
+        config["lr_scheduler"], torch.optim.lr_scheduler, optimizer
+    )
 
     trainer = Trainer(
         model,
@@ -67,7 +82,7 @@ def main(config):
         device=device,
         dataloaders=dataloaders,
         lr_scheduler=lr_scheduler,
-        len_epoch=config["trainer"].get("len_epoch", None)
+        len_epoch=config["trainer"].get("len_epoch", None),
     )
 
     trainer.train()

@@ -28,7 +28,8 @@ unset TMPDIR
 
 srun \
 python train.py \
-    -c hw_asr/configs/conformer_4.json
+    -c hw_asr/configs/conformer_5.json
+#    -c hw_asr/configs/conformer_4.json
 #    -c hw_asr/configs/conformer_2.json
 #    -c hw_asr/configs/conformer_3.json
 #    -c hw_asr/configs/conformer_1.json
