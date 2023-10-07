@@ -6,6 +6,7 @@
     "spectrogram": {
       "type": "MelSpectrogram",
       "args": {
+        "hop_length": 160
       }
     },
     "log_spec": true
@@ -20,7 +21,8 @@
       "n_feats": 128,
       "dim" : 64,
       "num_blocks": 6,
-      "conv_subsampling": true
+      "dropout_p": 0.0,
+      "do_conv_subsampling": true
     }
   },
   "data": {
@@ -34,7 +36,7 @@
             "part": "dev-clean",
             "max_audio_length": 20.0,
             "max_text_length": 200,
-            "limit": 10
+            "limit": 100
           }
         }
       ]
@@ -49,7 +51,7 @@
             "part": "dev-clean",
             "max_audio_length": 20.0,
             "max_text_length": 200,
-            "limit": 10
+            "limit": 100
           }
         }
       ]
@@ -58,12 +60,14 @@
   "optimizer": {
     "type": "AdamW",
     "args": {
-      "lr": 1e-2
+      "lr": 1e-3
     }
   },
   "loss": {
     "type": "CTCLoss",
-    "args": {}
+    "args": {
+      "zero_infinity": false
+    }
   },
   "metrics": [
     {
@@ -83,10 +87,10 @@
     "type": "OneCycleLR",
     "args": {
       "steps_per_epoch": 100,
-      "epochs": 50,
+      "epochs": 71,
       "anneal_strategy": "cos",
-      "max_lr": 1e-2,
-      "pct_start": 0.2
+      "max_lr": 1e-3,
+      "pct_start": 0.02
     }
   },
   "trainer": {
