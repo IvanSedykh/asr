@@ -23,18 +23,18 @@ class Trainer(BaseTrainer):
     """
 
     def __init__(
-            self,
-            model,
-            criterion,
-            metrics,
-            optimizer,
-            config,
-            device,
-            dataloaders,
-            text_encoder,
-            lr_scheduler=None,
-            len_epoch=None,
-            skip_oom=True,
+        self,
+        model,
+        criterion,
+        metrics,
+        optimizer,
+        config,
+        device,
+        dataloaders,
+        text_encoder,
+        lr_scheduler=None,
+        len_epoch=None,
+        skip_oom=True,
     ):
         super().__init__(model, criterion, metrics, optimizer, config, device)
         self.skip_oom = skip_oom
@@ -48,9 +48,12 @@ class Trainer(BaseTrainer):
             # iteration-based training
             self.train_dataloader = inf_loop(self.train_dataloader)
             self.len_epoch = len_epoch
-        self.evaluation_dataloaders = {k: v for k, v in dataloaders.items() if k != "train"}
+        self.evaluation_dataloaders = {
+            k: v for k, v in dataloaders.items() if k != "train"
+        }
         self.lr_scheduler = lr_scheduler
         self.log_step = 50
+        self.beam_size = self.config["trainer"].get("beam_size", 10)
 
         self.train_metrics = MetricTracker(
             "loss", "grad norm", *[m.name for m in self.metrics], writer=self.writer
@@ -85,7 +88,7 @@ class Trainer(BaseTrainer):
         self.train_metrics.reset()
         self.writer.add_scalar("epoch", epoch)
         for batch_idx, batch in enumerate(
-                tqdm(self.train_dataloader, desc="train", total=self.len_epoch)
+            tqdm(self.train_dataloader, desc="train", total=self.len_epoch)
         ):
             try:
                 batch = self.process_batch(
@@ -169,9 +172,9 @@ class Trainer(BaseTrainer):
         self.evaluation_metrics.reset()
         with torch.no_grad():
             for batch_idx, batch in tqdm(
-                    enumerate(dataloader),
-                    desc=part,
-                    total=len(dataloader),
+                enumerate(dataloader),
+                desc=part,
+                total=len(dataloader),
             ):
                 batch = self.process_batch(
                     batch,
@@ -199,18 +202,19 @@ class Trainer(BaseTrainer):
         return base.format(current, total, 100.0 * current / total)
 
     def _log_predictions(
-            self,
-            text,
-            log_probs,
-            log_probs_length,
-            audio_path,
-            examples_to_log=10,
-            *args,
-            **kwargs,
+        self,
+        text,
+        log_probs,
+        log_probs_length,
+        audio_path,
+        examples_to_log=10,
+        *args,
+        **kwargs,
     ):
         # TODO: implement logging of beam search results
         if self.writer is None:
             return
+        # ARGMAX DECODING ===========================
         argmax_inds = log_probs.cpu().argmax(-1).numpy()
         argmax_inds = [
             inds[: int(ind_len)]
@@ -218,13 +222,30 @@ class Trainer(BaseTrainer):
         ]
         argmax_texts_raw = [self.text_encoder.decode(inds) for inds in argmax_inds]
         argmax_texts = [self.text_encoder.ctc_decode(inds) for inds in argmax_inds]
-        tuples = list(zip(argmax_texts, text, argmax_texts_raw, audio_path))
+
+        # BEAM SEARCH DECODING ===========================
+        beam_search_texts = []
+        for probs, probs_lenght in zip(log_probs.cpu(), log_probs_length.cpu()):
+            beam_search_texts.append(
+                # take the most probable hypothesis
+                self.text_encoder.ctc_beam_search(
+                    probs, probs_lenght, beam_size=self.beam_size
+                )[0].text
+            )
+
+        tuples = list(
+            zip(argmax_texts, text, argmax_texts_raw, audio_path, beam_search_texts)
+        )
         shuffle(tuples)
         rows = {}
-        for pred, target, raw_pred, audio_path in tuples[:examples_to_log]:
+        for pred, target, raw_pred, audio_path, beam_search_pred in tuples[
+            :examples_to_log
+        ]:
             target = BaseTextEncoder.normalize_text(target)
             wer = calc_wer(target, pred) * 100
             cer = calc_cer(target, pred) * 100
+            wer_beam = calc_wer(target, beam_search_pred) * 100
+            cer_beam = calc_cer(target, beam_search_pred) * 100
 
             rows[Path(audio_path).name] = {
                 "target": target,
@@ -232,8 +253,13 @@ class Trainer(BaseTrainer):
                 "predictions": pred,
                 "wer": wer,
                 "cer": cer,
+                f"beam_search_prediction_{self.beam_size}": beam_search_pred,
+                "wer_beam": wer_beam,
+                "cer_beam": cer_beam,
             }
-        self.writer.add_table("predictions", pd.DataFrame.from_dict(rows, orient="index"))
+        self.writer.add_table(
+            "predictions", pd.DataFrame.from_dict(rows, orient="index")
+        )
 
     def _log_spectrogram(self, spectrogram_batch):
         spectrogram = random.choice(spectrogram_batch.cpu())
