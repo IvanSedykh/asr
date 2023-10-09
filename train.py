@@ -11,7 +11,7 @@ import hw_asr.metric as module_metric
 import hw_asr.model as module_arch
 from hw_asr.trainer import Trainer
 from hw_asr.utils import prepare_device
-from hw_asr.utils.object_loading import get_dataloaders
+from hw_asr.utils.object_loading import get_dataloaders, get_metrics
 from hw_asr.utils.parse_config import ConfigParser
 
 warnings.filterwarnings("ignore", category=UserWarning)
@@ -47,10 +47,7 @@ def main(config):
 
     # get function handles of loss and metrics
     loss_module = config.init_obj(config["loss"], module_loss).to(device)
-    metrics = [
-        config.init_obj(metric_dict, module_metric, text_encoder=text_encoder)
-        for metric_dict in config["metrics"]
-    ]
+    metrics = get_metrics(config, text_encoder)
 
     # build optimizer, learning rate scheduler. delete every line containing lr_scheduler for
     # disabling scheduler

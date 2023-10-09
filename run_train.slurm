@@ -1,6 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name=kek     # create a short name for your job
 #SBATCH --partition=rnd
+#SBATCH --exclude=99dgx-09
 #SBATCH --nodes=1                # node count
 #SBATCH --ntasks-per-node=1      # total number of tasks per node
 #SBATCH --cpus-per-task=32        # cpu-cores per task (>1 if multi-threaded tasks)
@@ -28,7 +29,10 @@ unset TMPDIR
 
 srun \
 python train.py \
-    -c hw_asr/configs/conformer_5.json
+    -c hw_asr/configs/conformer_9.json
+#    -c hw_asr/configs/conformer_8.json
+#    -c hw_asr/configs/conformer_6.json
+#    -c hw_asr/configs/conformer_5.json
 #    -c hw_asr/configs/conformer_4.json
 #    -c hw_asr/configs/conformer_2.json
 #    -c hw_asr/configs/conformer_3.json

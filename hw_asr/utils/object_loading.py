@@ -8,6 +8,7 @@ from hw_asr import batch_sampler as batch_sampler_module
 from hw_asr.base.base_text_encoder import BaseTextEncoder
 from hw_asr.collate_fn.collate import collate_fn
 from hw_asr.utils.parse_config import ConfigParser
+import hw_asr.metric as module_metric
 
 
 def get_dataloaders(configs: ConfigParser, text_encoder: BaseTextEncoder):
@@ -61,3 +62,25 @@ def get_dataloaders(configs: ConfigParser, text_encoder: BaseTextEncoder):
         )
         dataloaders[split] = dataloader
     return dataloaders
+
+
+def get_metrics(config, text_encoder):
+    common_metrics = [
+        config.init_obj(metric_dict, module_metric, text_encoder=text_encoder)
+        for metric_dict in config["metrics"].get("all", [])
+    ]
+    evalutation_metrics = [
+        config.init_obj(metric_dict, module_metric, text_encoder=text_encoder)
+        for metric_dict in config["metrics"].get("evaluation_metrics", [])
+    ]
+    train_metrics = [
+        config.init_obj(metric_dict, module_metric, text_encoder=text_encoder)
+        for metric_dict in config["metrics"].get("train_metrics", [])
+    ]
+
+    metrics = {
+        "train_metrics": common_metrics + train_metrics,
+        "evaluation_metrics": common_metrics + evalutation_metrics
+    }
+
+    return metrics

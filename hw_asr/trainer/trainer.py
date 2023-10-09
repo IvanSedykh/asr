@@ -55,11 +55,16 @@ class Trainer(BaseTrainer):
         self.log_step = 50
         self.beam_size = self.config["trainer"].get("beam_size", 10)
 
-        self.train_metrics = MetricTracker(
-            "loss", "grad norm", *[m.name for m in self.metrics], writer=self.writer
+        self.train_metrics_tracker = MetricTracker(
+            "loss",
+            "grad norm",
+            *[m.name for m in self.metrics["train_metrics"]],
+            writer=self.writer,
         )
-        self.evaluation_metrics = MetricTracker(
-            "loss", *[m.name for m in self.metrics], writer=self.writer
+        self.evaluation_metrics_tracker = MetricTracker(
+            "loss",
+            *[m.name for m in self.metrics["evaluation_metrics"]],
+            writer=self.writer,
         )
 
     @staticmethod
@@ -85,7 +90,7 @@ class Trainer(BaseTrainer):
         :return: A log that contains average loss and metric in this epoch.
         """
         self.model.train()
-        self.train_metrics.reset()
+        self.train_metrics_tracker.reset()
         self.writer.add_scalar("epoch", epoch)
         for batch_idx, batch in enumerate(
             tqdm(self.train_dataloader, desc="train", total=self.len_epoch)
@@ -94,7 +99,7 @@ class Trainer(BaseTrainer):
                 batch = self.process_batch(
                     batch,
                     is_train=True,
-                    metrics=self.train_metrics,
+                    metrics_tracker=self.train_metrics_tracker,
                 )
             except RuntimeError as e:
                 if "out of memory" in str(e) and self.skip_oom:
@@ -106,7 +111,7 @@ class Trainer(BaseTrainer):
                     continue
                 else:
                     raise e
-            self.train_metrics.update("grad norm", self.get_grad_norm())
+            self.train_metrics_tracker.update("grad norm", self.get_grad_norm())
             if batch_idx % self.log_step == 0:
                 self.writer.set_step((epoch - 1) * self.len_epoch + batch_idx)
                 self.logger.debug(
@@ -119,11 +124,11 @@ class Trainer(BaseTrainer):
                 )
                 self._log_predictions(**batch)
                 self._log_spectrogram(batch["spectrogram"])
-                self._log_scalars(self.train_metrics)
+                self._log_scalars(self.train_metrics_tracker)
                 # we don't want to reset train metrics at the start of every epoch
                 # because we are interested in recent train metrics
-                last_train_metrics = self.train_metrics.result()
-                self.train_metrics.reset()
+                last_train_metrics = self.train_metrics_tracker.result()
+                self.train_metrics_tracker.reset()
             if batch_idx >= self.len_epoch:
                 break
         log = last_train_metrics
@@ -134,7 +139,7 @@ class Trainer(BaseTrainer):
 
         return log
 
-    def process_batch(self, batch, is_train: bool, metrics: MetricTracker):
+    def process_batch(self, batch, is_train: bool, metrics_tracker: MetricTracker):
         batch = self.move_batch_to_device(batch, self.device)
         if is_train:
             self.optimizer.zero_grad()
@@ -156,9 +161,10 @@ class Trainer(BaseTrainer):
             if self.lr_scheduler is not None:
                 self.lr_scheduler.step()
 
-        metrics.update("loss", batch["loss"].item())
-        for met in self.metrics:
-            metrics.update(met.name, met(**batch))
+        metrics_tracker.update("loss", batch["loss"].item())
+        metrics_split = "train_metrics" if is_train else "evaluation_metrics"
+        for met in self.metrics[metrics_split]:
+            metrics_tracker.update(met.name, met(**batch))
         return batch
 
     def _evaluation_epoch(self, epoch, part, dataloader):
@@ -169,7 +175,7 @@ class Trainer(BaseTrainer):
         :return: A log that contains information about validation
         """
         self.model.eval()
-        self.evaluation_metrics.reset()
+        self.evaluation_metrics_tracker.reset()
         with torch.no_grad():
             for batch_idx, batch in tqdm(
                 enumerate(dataloader),
@@ -179,17 +185,17 @@ class Trainer(BaseTrainer):
                 batch = self.process_batch(
                     batch,
                     is_train=False,
-                    metrics=self.evaluation_metrics,
+                    metrics_tracker=self.evaluation_metrics_tracker,
                 )
             self.writer.set_step(epoch * self.len_epoch, part)
-            self._log_scalars(self.evaluation_metrics)
+            self._log_scalars(self.evaluation_metrics_tracker)
             self._log_predictions(**batch)
             self._log_spectrogram(batch["spectrogram"])
 
         # add histogram of model parameters to the tensorboard
         for name, p in self.model.named_parameters():
             self.writer.add_histogram(name, p, bins="auto")
-        return self.evaluation_metrics.result()
+        return self.evaluation_metrics_tracker.result()
 
     def _progress(self, batch_idx):
         base = "[{}/{} ({:.0f}%)]"
