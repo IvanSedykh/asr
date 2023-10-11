@@ -39,6 +39,7 @@ def main(config):
     model = config.init_obj(config["arch"], module_arch, n_class=len(text_encoder))
     logger.info(model)
 
+    # todo: remove this cringe, at least use accelerate
     # prepare for (multi-device) GPU training
     device, device_ids = prepare_device(config["n_gpu"])
     model = model.to(device)

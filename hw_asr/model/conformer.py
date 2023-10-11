@@ -7,6 +7,7 @@ import torch.nn.functional as F
 from rotary_embedding_torch import RotaryEmbedding
 
 from hw_asr.base import BaseModel
+# from hw_asr.model.ext import RelativeMultiHeadAttention
 
 
 # from lucidrains
@@ -120,7 +121,6 @@ class RelativeMultiHeadAttention(nn.Module):
         - **query** (batch, time, dim): Tensor containing query vector
         - **key** (batch, time, dim): Tensor containing key vector
         - **value** (batch, time, dim): Tensor containing value vector
-        - **mask** (batch, 1, time2) or (batch, time1, time2): Tensor containing indices to be masked
 
     Returns:
         - **outputs**: Tensor produces by relative multi head attention module.
