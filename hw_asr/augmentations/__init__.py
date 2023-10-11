@@ -13,6 +13,7 @@ def from_configs(configs: ConfigParser):
             wave_augs.append(
                 configs.init_obj(aug_dict, hw_asr.augmentations.wave_augmentations)
             )
+    print(f"Wave augs: {wave_augs}")
 
     spec_augs = []
     if "augmentations" in configs.config and "spectrogram" in configs.config["augmentations"]:
@@ -20,6 +21,7 @@ def from_configs(configs: ConfigParser):
             spec_augs.append(
                 configs.init_obj(aug_dict, hw_asr.augmentations.spectrogram_augmentations)
             )
+    print(f"Spec augs: {spec_augs}")
     return _to_function(wave_augs), _to_function(spec_augs)
 
 
