@@ -25,7 +25,7 @@ def collate_fn(dataset_items: List[dict]):
     # }
 
     # SPECTROGRAMS
-    spectrograms = [torch.squeeze(item['spectrogram']).T for item in dataset_items]
+    spectrograms = [torch.squeeze(item['spectrogram'], dim=0).T for item in dataset_items]
     spectrograms_lens = [item['spectrogram'].shape[2] for item in dataset_items]
     spectrograms = torch.nn.utils.rnn.pad_sequence(spectrograms, batch_first=True)
     spectrograms = spectrograms.permute(0, 2, 1)
@@ -34,7 +34,7 @@ def collate_fn(dataset_items: List[dict]):
 
     # TEXTS ENCCODING
     # actually this is text char tokens
-    texts_encoded = [torch.squeeze(item['text_encoded']) for item in dataset_items]
+    texts_encoded = [torch.squeeze(item['text_encoded'], dim=0) for item in dataset_items]
     texts_encoded_lens = [item['text_encoded'].shape[1] for item in dataset_items]
     texts_encoded = torch.nn.utils.rnn.pad_sequence(texts_encoded, batch_first=True)
     result_batch['text_encoded'] = texts_encoded

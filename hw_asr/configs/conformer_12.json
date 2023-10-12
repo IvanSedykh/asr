@@ -1,5 +1,5 @@
 {
-  "name": "conformer_v10",
+  "name": "conformer_v12",
   "n_gpu": 1,
   "preprocessing": {
     "sr": 16000,
@@ -14,7 +14,23 @@
   },
   "augmentations": {
     "wave": [],
-    "spectrogram": []
+    "spectrogram": [
+      {
+        "type": "FrequencyMasking",
+        "args":{
+          "n_masks": 1,
+          "freq_mask_param": 27
+        }
+      },
+      {
+        "type": "TimeMasking",
+        "args" : {
+          "n_masks": 7,
+          "time_mask_param": 10000,
+          "p": 0.05
+        }
+      }
+    ]
   },
   "arch": {
     "type": "Conformer",
@@ -23,7 +39,8 @@
       "dim" : 128,
       "dropout_p": 0.2,
       "num_blocks": 10,
-      "do_conv_subsampling": true
+      "do_conv_subsampling": true,
+      "learned_freq_rope": false
     }
   },
   "data": {

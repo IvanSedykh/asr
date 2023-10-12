@@ -19,8 +19,11 @@ class CTCLossWrapper(CTCLoss):
             # TODO: remove after fixing -- may slow down
             print(f"{log_probs_t.shape=}")
             print(f"{log_probs=}")
-            print(f"{log_probs_length=}")
             print(f"{text_encoded=}")
+            print(f"{log_probs_length=}")
             print(f"{text_encoded_length=}")
+            print(f"{torch.any(log_probs_length < text_encoded_length)=}")
+            print(f"{(log_probs_length < text_encoded_length)=}")
+            print(f"{val=}")
             raise ValueError
         return val
