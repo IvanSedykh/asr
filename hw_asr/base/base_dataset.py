@@ -127,6 +127,7 @@ class BaseDataset(Dataset):
             random.seed(42)  # best seed for deep learning
             random.shuffle(index)
             index = index[:limit]
+        logger.info(f"Final total dataset len {len(index)}")
         return index
 
     @staticmethod
