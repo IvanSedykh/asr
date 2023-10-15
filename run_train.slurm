@@ -29,7 +29,7 @@ unset TMPDIR
 
 srun \
 python train.py \
-    -c hw_asr/configs/conformer_17.json
+    -c hw_asr/configs/conformer_18.json
 #    -c hw_asr/configs/conformer_11.json
 #    -c hw_asr/configs/conformer_10.json
 #    -c hw_asr/configs/conformer_9.json -r saved/models/conformer_v9/1009_175335/model_best.pth
