@@ -87,11 +87,12 @@ class FeedForwardModule(nn.Module):
     - input of shape [bs, seq_len, dim]
     - output of shape [bs, seq_len, dim]
     """
+    FF_EXPANSION_FACTOR = 2
 
     def __init__(self, dim, hidden_dim=None, dropout_prob=0.0) -> None:
         super().__init__()
         if hidden_dim is None:
-            hidden_dim = dim * 2
+            hidden_dim = dim * self.FF_EXPANSION_FACTOR
         self.block = nn.Sequential(
             nn.Linear(dim, hidden_dim),
             Swish(),  # todo: try another
