@@ -1,3 +1,4 @@
+import os
 from typing import List, NamedTuple
 from collections import defaultdict
 import multiprocessing
@@ -175,7 +176,9 @@ class CTCCharTextEncoder(CharTextEncoder):
         ):
             logits_list.append(logits_sample[:len_sample].cpu().numpy())
 
-        with multiprocessing.get_context("fork").Pool() as pool:
+        
+        num_procs = min(4, os.cpu_count())  # we dont need more than 4
+        with multiprocessing.get_context("fork").Pool(num_procs) as pool:
             pred_list = decoder.decode_beams_batch(
                 pool, logits_list, beam_width=beam_size
             )

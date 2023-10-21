@@ -6,6 +6,7 @@ import datetime
 
 import torch
 from tqdm import tqdm
+import numpy as np
 
 import hw_asr.model as module_model
 from hw_asr.trainer import Trainer
@@ -14,8 +15,14 @@ from hw_asr.utils.object_loading import get_dataloaders
 from hw_asr.utils.parse_config import ConfigParser
 from hw_asr.metric.utils import calc_cer, calc_wer
 
+
+# fix random seeds for reproducibility
+SEED = 0xdeadbeef
+torch.manual_seed(SEED)
+np.random.seed(SEED)
+
 DEFAULT_CHECKPOINT_PATH = ROOT_PATH / "default_test_model" / "checkpoint.pth"
-NUM_BEAMS = 10
+NUM_BEAMS = 30
 
 
 def calc_mean_metric(gt_list: list[str], pred_list:list[str], metric_func: callable):
@@ -30,6 +37,7 @@ def main(config, out_file):
 
     # define cpu or gpu if possible
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print(f"Using {device}")
 
     # text_encoder
     text_encoder = config.get_text_encoder()
@@ -104,21 +112,21 @@ def main(config, out_file):
         [i['pred_text_argmax'] for i in results],
         calc_wer
     )
-    print(f"WER (ARGMAX): {argmax_wer:.4f}")
+    print(f"WER (ARGMAX): {argmax_wer:.2%}")
 
     bs_wer = calc_mean_metric(
         [i['ground_trurh'] for i in results],
         [i['pred_text_beam_search'][0][0] for i in results],
         calc_wer
     )
-    print(f"WER (BS): {bs_wer:.4f}")
+    print(f"WER (BS): {bs_wer:.2%}")
 
     bs_lm_wer = calc_mean_metric(
         [i['ground_trurh'] for i in results],
         [i['pred_text_beam_search_lm'][0][0] for i in results],
         calc_wer
     )
-    print(f"WER (BS + LM): {bs_lm_wer:.4f}")
+    print(f"WER (BS + LM): {bs_lm_wer:.2%}")
 
 
 if __name__ == "__main__":
