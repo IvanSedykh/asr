@@ -1,3 +1,5 @@
+default_test_model
+tmp
 notebooks
 slurm_outputs
 

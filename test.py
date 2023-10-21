@@ -2,6 +2,7 @@ import argparse
 import json
 import os
 from pathlib import Path
+import datetime
 
 import torch
 from tqdm import tqdm
@@ -11,8 +12,17 @@ from hw_asr.trainer import Trainer
 from hw_asr.utils import ROOT_PATH
 from hw_asr.utils.object_loading import get_dataloaders
 from hw_asr.utils.parse_config import ConfigParser
+from hw_asr.metric.utils import calc_cer, calc_wer
 
 DEFAULT_CHECKPOINT_PATH = ROOT_PATH / "default_test_model" / "checkpoint.pth"
+NUM_BEAMS = 10
+
+
+def calc_mean_metric(gt_list: list[str], pred_list:list[str], metric_func: callable):
+    vals = []
+    for target, pred in zip(gt_list, pred_list):
+        vals.append(metric_func(target, pred))
+    return sum(vals) / len(vals)
 
 
 def main(config, out_file):
@@ -25,9 +35,12 @@ def main(config, out_file):
     text_encoder = config.get_text_encoder()
 
     # setup data_loader instances
+    print(f"Loading data...")
     dataloaders = get_dataloaders(config, text_encoder)
+    print(dataloaders['test'].batch_size)
 
     # build model architecture
+    print(f"Building model...")
     model = config.init_obj(config["arch"], module_model, n_class=len(text_encoder))
     logger.info(model)
 
@@ -52,12 +65,20 @@ def main(config, out_file):
                 batch.update(output)
             else:
                 batch["logits"] = output
-            batch["log_probs"] = torch.log_softmax(batch["logits"], dim=-1)
+
+            # we dont need probs/log probs. logits are ok
+            # batch["log_probs"] = torch.log_softmax(batch["logits"], dim=-1)
+            # batch["probs"] = batch["log_probs"].exp().cpu()
+            # batch["argmax"] = batch["probs"].argmax(-1)
             batch["log_probs_length"] = model.transform_input_lengths(
                 batch["spectrogram_length"]
             )
-            batch["probs"] = batch["log_probs"].exp().cpu()
-            batch["argmax"] = batch["probs"].argmax(-1)
+            batch["argmax"] = batch["logits"].argmax(-1)
+
+            # BATCHED BEAM SEARCH ########
+            pred_bs_lm = text_encoder.batched_ctc_beam_search_lm(batch, NUM_BEAMS)
+            pred_bs = text_encoder.batched_ctc_beam_search(batch, NUM_BEAMS)
+            # ###########
             for i in range(len(batch["text"])):
                 argmax = batch["argmax"][i]
                 argmax = argmax[: int(batch["log_probs_length"][i])]
@@ -65,13 +86,39 @@ def main(config, out_file):
                     {
                         "ground_trurh": batch["text"][i],
                         "pred_text_argmax": text_encoder.ctc_decode(argmax.cpu().numpy()),
-                        "pred_text_beam_search": text_encoder.ctc_beam_search(
-                            batch["probs"][i], batch["log_probs_length"][i], beam_size=100
-                        )[:10],
+                        # "pred_text_beam_search": text_encoder.ctc_beam_search(
+                        #     batch["logits"][i], batch["log_probs_length"][i], beam_size=NUM_BEAMS
+                        # )[:10],
+                        "pred_text_beam_search": pred_bs[i][:10],
+                        # "pred_text_beam_search_lm": text_encoder.ctc_beam_search_lm(
+                        #     batch["logits"][i], batch["log_probs_length"][i], beam_size=NUM_BEAMS
+                        # )[:10],
+                        "pred_text_beam_search_lm": pred_bs_lm[i][:10]
                     }
                 )
     with Path(out_file).open("w") as f:
         json.dump(results, f, indent=2)
+
+    argmax_wer = calc_mean_metric(
+        [i['ground_trurh'] for i in results],
+        [i['pred_text_argmax'] for i in results],
+        calc_wer
+    )
+    print(f"WER (ARGMAX): {argmax_wer:.4f}")
+
+    bs_wer = calc_mean_metric(
+        [i['ground_trurh'] for i in results],
+        [i['pred_text_beam_search'][0][0] for i in results],
+        calc_wer
+    )
+    print(f"WER (BS): {bs_wer:.4f}")
+
+    bs_lm_wer = calc_mean_metric(
+        [i['ground_trurh'] for i in results],
+        [i['pred_text_beam_search_lm'][0][0] for i in results],
+        calc_wer
+    )
+    print(f"WER (BS + LM): {bs_lm_wer:.4f}")
 
 
 if __name__ == "__main__":
