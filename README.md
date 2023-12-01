@@ -45,7 +45,11 @@ run `python train.py -c hw_asr/configs/conformer_24.json`
 
 To compute metrics:
 
-Download the checkpoint, config and lm from [here](https://disk.yandex.ru/d/ZqIdzXFTsDvtEw).
+Download the checkpoint, config and lm from [here](https://disk.yandex.ru/d/ZqIdzXFTsDvtEw).  
+Or from gdisk.
+
+`gdown --fuzzy https://drive.google.com/file/d/1Dn2ed35w9HbU3ouREGi-sE1RacwB182i/view?usp=sharing`
+`unzip default_test_model.zip`
 
 test-other:
 ```bash

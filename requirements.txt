@@ -18,3 +18,4 @@ pytest
 python-dotenv
 rotary-embedding-torch
 https://github.com/kpu/kenlm/archive/master.zip
+gdown
